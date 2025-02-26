@@ -38,7 +38,7 @@ The R Markdown document (.RMD) file reads in the output files of the nf-core RNA
 │…. ├── example_DesignFile.csv 
 │…. ├── example_nf-params.json 
 │…. ├── example_run_nextflow.sh 
-│…. ├── CBBI_RNAseq_manual.rmd 
+│…. ├── bulk_RNAseq_manual.rmd 
 │…. ├── [project_title]/ 
 │…. │…. ├── [run_name]/ 
 │…. │…. │…. ├── result/ 
