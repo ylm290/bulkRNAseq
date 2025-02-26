@@ -21,7 +21,7 @@ Organize your project as [working_directory]/[project_title]/[run_name]/ so you 
 - Count files merged for all samples (.tsv): /result/star_salmon/salmon.merged.gene_counts.tsv
 - Count files per sample (.sf): /result/star_salmon/[sample_name]/quant.genes.sf
 
-*BAM file validation*  \ 
+*BAM file validation*  
 We found truncated BAM files even with a successful completion message from the Nextflow run. This is because the server storage got full at the time of writing the files. Such error is not detectable by the original pipeline, hence additional checks on all BAM files are now added in example_run_nextflow.sh. The following files can be found in /result/star_salmon/picard_validatesamfile. 
 - bad_bams.fofn: quick check whether the BAM files have EOF (end-of-file) marks.
 - bam_summary.txt: full output of Picard ValidateSamFile
@@ -34,7 +34,7 @@ We found truncated BAM files even with a successful completion message from the 
 *Set up for DEA (Differential Expression Analysis)*  
 The R Markdown document (.RMD) file reads in the output files of the nf-core RNA-seq workflow and detects differentially expressed genes using DESeq2 package. It is assumed that this file is in the same [working_directory]. Any figures and gene lists from the analysis would be saved under [working_directory]/[project_title]/[run_name]/DEAoutput. 
 
-*File tree*  \ 
+*File tree*  
 ```{bash}
 ├── [working_directory]/ 
 │…. ├── example_DesignFile.csv 
@@ -50,17 +50,17 @@ The R Markdown document (.RMD) file reads in the output files of the nf-core RNA
 │…. │…. │…. │…. │…. ├── star_salmon/ 
 │…. │…. │…. │…. │…. │…. ├── multiqc_report.html 
 │…. │…. │…. │…. ├── star_salmon/ 
-│…. │…. │…. │…. │…. ├── [sample_name].markdup.sorted.bam \ 
-│…. │…. │…. │…. │…. ├── [sample_name].Aligned.out.bam \ 
-│…. │…. │…. │…. │…. ├── salmon.merged.gene_counts.tsv \ 
-│…. │…. │…. │…. │…. ├── salmon.merged.gene_tpm.tsv \ 
-│…. │…. │…. │…. │…. ├── [sample_name]/ \ 
-│…. │…. │…. │…. │…. │…. ├── quant.genes.sf \ 
-│…. │…. │…. │…. │…. │…. ├── quant.sf \ 
-│…. │…. │…. │…. │…. ├── picard_validatesamfile/ \ 
-│…. │…. │…. │…. │…. │…. ├── error_messages.txt \ 
-│…. │…. │…. ├── work/ \ 
-│…. │…. │…. ├── scratch/ \ 
-│…. │…. │…. ├── DEAoutput/ \ 
-│…. │…. │…. │…. ├── DEA_all_genes.csv \
+│…. │…. │…. │…. │…. ├── [sample_name].markdup.sorted.bam 
+│…. │…. │…. │…. │…. ├── [sample_name].Aligned.out.bam 
+│…. │…. │…. │…. │…. ├── salmon.merged.gene_counts.tsv 
+│…. │…. │…. │…. │…. ├── salmon.merged.gene_tpm.tsv 
+│…. │…. │…. │…. │…. ├── [sample_name]/ 
+│…. │…. │…. │…. │…. │…. ├── quant.genes.sf 
+│…. │…. │…. │…. │…. │…. ├── quant.sf 
+│…. │…. │…. │…. │…. ├── picard_validatesamfile/ 
+│…. │…. │…. │…. │…. │…. ├── error_messages.txt 
+│…. │…. │…. ├── work/ 
+│…. │…. │…. ├── scratch/ 
+│…. │…. │…. ├── DEAoutput/ 
+│…. │…. │…. │…. ├── DEA_all_genes.csv 
 ```
