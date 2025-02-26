@@ -1,8 +1,6 @@
 ## Human bulk RNA-seq data processing pipeline
-This pipeline utilizes [nf-core RNA-seq v.3.12.0](https://nf-co.re/rnaseq/3.12.0) STAR-Salmon which performs read alignment and transcript quantification of bulk RNA-seq data. 
-The nf-core is a bioinformatics community project for making computational methods portable and reproducible. It runs with the Nextflow workflow manager.
-To demonstrate this pipeline, bulk mRNA-seq dataset with biological replicates and technical replicates from a public dataset, [GSE82236](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE82236).
-Human genome reference version GRCh38 primary assembly and annotation version [Gencode v44 Basic](https://www.ensembl.org/info/genome/genebuild/transcript_quality_tags.html#basic) are used. 
+This pipeline utilizes [nf-core RNA-seq v.3.12.0](https://nf-co.re/rnaseq/3.12.0) STAR-Salmon mode which performs read alignment and transcript quantification of bulk RNA-seq data with the Nextflow workflow manager. The nf-core is a bioinformatics community project for making computational methods portable and reproducible. 
+To demonstrate this pipeline, bulk mRNA-seq dataset with biological replicates and technical replicates from a public dataset, [GSE82236](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE82236). Human genome reference version GRCh38 primary assembly and annotation version [Gencode v44 Basic](https://www.ensembl.org/info/genome/genebuild/transcript_quality_tags.html#basic) are used. 
 
 *Input files for nf-core RNA-seq workflow*
 - example_DesignFile.csv: Sample names, (relative or absolute) paths to data files, and NGS library strandedness according to the nf-core guideline.
