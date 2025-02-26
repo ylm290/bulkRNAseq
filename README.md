@@ -21,8 +21,8 @@ Organize your project as [working_directory]/[project_title]/[run_name]/ so you 
 - Count files merged for all samples (.tsv): /result/star_salmon/salmon.merged.gene_counts.tsv
 - Count files per sample (.sf): /result/star_salmon/[sample_name]/quant.genes.sf
 
-*BAM file validation* 
-We found truncated BAM files even with a successful completion message from the Nextflow run. This is because the server storage got full at the time of writing the files. Such error is not detectable by the original pipeline, hence additional checks on all BAM files are now added in example_run_nextflow.sh. The following files can be found in /result/star_salmon/picard_validatesamfile. \
+*BAM file validation*  \ 
+We found truncated BAM files even with a successful completion message from the Nextflow run. This is because the server storage got full at the time of writing the files. Such error is not detectable by the original pipeline, hence additional checks on all BAM files are now added in example_run_nextflow.sh. The following files can be found in /result/star_salmon/picard_validatesamfile. 
 - bad_bams.fofn: quick check whether the BAM files have EOF (end-of-file) marks.
 - bam_summary.txt: full output of Picard ValidateSamFile
 - error_messages.txt: file name and detected error and warning messages extracted from bam_summary.txt. Please check the [GATK troubleshooting page](https://gatk.broadinstitute.org/hc/en-us/articles/360035891231-Errors-in-SAM-or-BAM-files-can-be-diagnosed-with-ValidateSamFile) for what they mean.
@@ -31,10 +31,10 @@ We found truncated BAM files even with a successful completion message from the 
 - Please check the execution report, multiqc report, and bam file validation result to assess the successful completion of all the stages.
 - Please remove scratch/ and work/ directories from the server.
 
-*Set up for DEA (Differential Expression Analysis)* \
-The R Markdown document (.RMD) file reads in the output files of the nf-core RNA-seq workflow and detects differentially expressed genes using DESeq2 package. It is assumed that this file is in the same [working_directory]. Any figures and gene lists from the analysis would be saved under [working_directory]/[project_title]/[run_name]/DEAoutput. \ 
+*Set up for DEA (Differential Expression Analysis)*  \ 
+The R Markdown document (.RMD) file reads in the output files of the nf-core RNA-seq workflow and detects differentially expressed genes using DESeq2 package. It is assumed that this file is in the same [working_directory]. Any figures and gene lists from the analysis would be saved under [working_directory]/[project_title]/[run_name]/DEAoutput. 
 
-*File tree* 
+*File tree*  \ 
 ├── [working_directory]/ \ 
 │…. ├── example_DesignFile.csv \ 
 │…. ├── example_nf-params.json \ 
