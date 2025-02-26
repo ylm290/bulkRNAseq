@@ -31,24 +31,25 @@ We found truncated BAM files even with a successful completion message from the 
 - Please check the execution report, multiqc report, and bam file validation result to assess the successful completion of all the stages.
 - Please remove scratch/ and work/ directories from the server.
 
-*Set up for DEA (Differential Expression Analysis)*  \ 
+*Set up for DEA (Differential Expression Analysis)*  
 The R Markdown document (.RMD) file reads in the output files of the nf-core RNA-seq workflow and detects differentially expressed genes using DESeq2 package. It is assumed that this file is in the same [working_directory]. Any figures and gene lists from the analysis would be saved under [working_directory]/[project_title]/[run_name]/DEAoutput. 
 
 *File tree*  \ 
-├── [working_directory]/ \ 
-│…. ├── example_DesignFile.csv \ 
-│…. ├── example_nf-params.json \ 
-│…. ├── example_run_nextflow.sh \ 
-│…. ├── CBBI_RNAseq_manual.rmd \ 
-│…. ├── [project_title]/ \ 
-│…. │…. ├── [run_name]/ \ 
-│…. │…. │…. ├── result/ \ 
-│…. │…. │…. │…. ├── pipeline_info/ \ 
-│…. │…. │…. │…. │…. ├── execution_report_yyyy-mm-dd_hh-mm-ss.html \ 
-│…. │…. │…. │…. ├── multiqc/ \ 
-│…. │…. │…. │…. │…. ├── star_salmon/ \ 
-│…. │…. │…. │…. │…. │…. ├── multiqc_report.html \ 
-│…. │…. │…. │…. ├── star_salmon/ \ 
+```{bash}
+├── [working_directory]/ 
+│…. ├── example_DesignFile.csv 
+│…. ├── example_nf-params.json 
+│…. ├── example_run_nextflow.sh 
+│…. ├── CBBI_RNAseq_manual.rmd 
+│…. ├── [project_title]/ 
+│…. │…. ├── [run_name]/ 
+│…. │…. │…. ├── result/ 
+│…. │…. │…. │…. ├── pipeline_info/ 
+│…. │…. │…. │…. │…. ├── execution_report_yyyy-mm-dd_hh-mm-ss.html 
+│…. │…. │…. │…. ├── multiqc/ 
+│…. │…. │…. │…. │…. ├── star_salmon/ 
+│…. │…. │…. │…. │…. │…. ├── multiqc_report.html 
+│…. │…. │…. │…. ├── star_salmon/ 
 │…. │…. │…. │…. │…. ├── [sample_name].markdup.sorted.bam \ 
 │…. │…. │…. │…. │…. ├── [sample_name].Aligned.out.bam \ 
 │…. │…. │…. │…. │…. ├── salmon.merged.gene_counts.tsv \ 
@@ -61,4 +62,5 @@ The R Markdown document (.RMD) file reads in the output files of the nf-core RNA
 │…. │…. │…. ├── work/ \ 
 │…. │…. │…. ├── scratch/ \ 
 │…. │…. │…. ├── DEAoutput/ \ 
-│…. │…. │…. │…. ├── DEA_all_genes.csv \ 
+│…. │…. │…. │…. ├── DEA_all_genes.csv \
+```
