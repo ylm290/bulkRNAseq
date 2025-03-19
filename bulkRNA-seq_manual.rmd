@@ -8,21 +8,21 @@ output:  rmdformats::downcute
 
 # Introduction 
 **nf-core RNA-seq v.3.12.0 STAR-Salmon :** \
-This pipeline performs read alignment and transcript quantification of bulk RNA-seq data. Based on [nf-core RNA-seq v.3.12.0 STAR-Salmon](https://nf-co.re/rnaseq/3.12.0), a bioinformatics community project for making computational methods portable and reproducible, it runs with [Nextflow](https://www.nextflow.io/about-us.html) workflow manager, and has been optimized for differential expression analysis at the gene level. To demonstrate this pipeline, bulk mRNA-seq dataset with biological replicates and technical replicates from a publication (cited below) had been downloaded and saved in the CBBI server: /home/lety/data/CBBI_Projects/Nextflow_Pipelines_CBBI/raw/mRNA_softlink_zipped/*_zipped.fastq.gz Human genome reference version GRCh38 primary assembly and annotation version Gencode v44 Basic are used. For more information on Gencode Basic: [click here](https://www.ensembl.org/info/genome/genebuild/transcript_quality_tags.html#basic)
+This pipeline performs read alignment and transcript quantification of bulk RNA-seq data. Based on [nf-core RNA-seq v.3.12.0 STAR-Salmon](https://nf-co.re/rnaseq/3.12.0), a bioinformatics community project for making computational methods portable and reproducible, it runs with [Nextflow](https://www.nextflow.io/about-us.html) workflow manager, and has been optimized for differential expression analysis at the gene level. To demonstrate this pipeline, bulk mRNA-seq dataset with biological replicates and technical replicates from a publication is used. Human genome reference version GRCh38 primary assembly and annotation version Gencode v44 Basic are used. For more information on Gencode Basic: [click here](https://www.ensembl.org/info/genome/genebuild/transcript_quality_tags.html#basic)
 \
 
 **Input files :**  \
     * *example_DesignFile.csv* : Sample names, (relative or absolute) paths to data files, and [NGS library strandedness](https://salmon.readthedocs.io/en/latest/library_type.html#fragment-library-types) according to [the nf-core guideline.](https://nf-co.re/rnaseq/3.12.0/docs/usage#full-samplesheet)  \
-    * *example_nf-params.json* : Pre-defined nf-core parameters for CBBI RNA-seq_v1.1 pipeline. It includes paths to the reference genome (.fasta) and annotation (.gtf) files.   \
+    * *example_nf-params.json* : Pre-defined nf-core parameters for the pipeline. It includes paths to the reference genome (.fasta) and annotation (.gtf) files.   \
     * *example_run_nextflow.sh* : Bash script file for initiating a Nextflow run *(a.k.a your magic button)*. You can adjust the 'wdir', 'proj' and 'run' parameters before initiating the run.
 \
 
 **Required changes on *example_run_nextflow.sh* before initiating your run :** \
 Change the three parameters and save the file. Use a descriptive run name. \
-    * wdir = [working_directory]  e.g. /data/CBBI_Projects/Nextflow_Pipelines_CBBI/processed/ylim/ \
-    * proj = [project_title]  e.g. "rnaseq"  \
-    * run = [run_name]  e.g. "star_Salmon_basic_ylim"  \
-Organize your project as [working_directory]/[project_title]/[run_name]/ so you can save the results from multiple runs under a single project folder. Now this is where your "work" and "result" folders will be created from the CBBI RNA-seq_v1.1 run. \
+    * wdir = [working_directory]  \
+    * proj = [project_title]  \
+    * run = [run_name]  \
+Organize your project as [working_directory]/[project_title]/[run_name]/ so you can save the results from multiple runs under a single project folder. Now this is where your "work" and "result" folders will be created from the run. \
 
 **Before running the pipeline :**  \
     * Check your raw data size & estimate your project folder size : $ du -hsc /path/to/raw/*.fastq.gz  \
@@ -50,7 +50,7 @@ We found truncated BAM files even with successful completion message from the Ne
 │.... ├── example_DesignFile.csv   \
 │.... ├── example_nf-params.json   \
 │.... ├── example_run_nextflow.sh   \
-│.... ├── CBBI_RNAseq_manual.rmd   \
+│.... ├── bulkRNAseq_manual.rmd   \
 │.... ├── [project_title]/   \
 │.... │.... ├── [run_name]/   \
 │.... │.... │.... ├── result/   \
@@ -83,7 +83,7 @@ We found truncated BAM files even with successful completion message from the Ne
 
 
 # Set up for DEA
-This R Markdown documents (.RMD) file reads in the output files of CBBI RNA-seq_v1.1 pipeline and detects differentially expressed genes using [DESeq2 package](http://bioconductor.org/packages/release/bioc/vignettes/DESeq2/inst/doc/DESeq2.html#standard-workflow). It is assumed that this file is in the same *[working_directory]*. Any figures and gene lists from the analysis would be saved under *[working_directory]/[project_title]/[run_name]/DEAoutput*. 
+This R Markdown documents (.RMD) file reads in the output files of  RNA-seq_v1.1 pipeline and detects differentially expressed genes using [DESeq2 package](http://bioconductor.org/packages/release/bioc/vignettes/DESeq2/inst/doc/DESeq2.html#standard-workflow). It is assumed that this file is in the same *[working_directory]*. Any figures and gene lists from the analysis would be saved under *[working_directory]/[project_title]/[run_name]/DEAoutput*. 
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, width = 100)
@@ -845,7 +845,7 @@ Please watch the following videos before using the software.   \
     * Run Core Analysis & Interpret Results : https://tv.qiagenbioinformatics.com/video/64233123/making-your-rnaseq-microarray  \
 
 **Fusion gene analysis using Arriba :**  \
-Fusion genes can be detected by utilizing intermediate files of STAR run as input files for Arriba. Upon completion of the CBBI RNA-seq pipeline, the files can be found at [working_directory]/[project_title]/[run_name]/result/star_salmon/[sample_name].Aligned.out.bam  When you [install Arriba using Bioconda](https://arriba.readthedocs.io/en/latest/quickstart/#installation-using-bioconda), Blacklist, Known fusions, and Protein domains of GRCh38 (and others) are included in your conda environment. The files can be found at [path/to/your/conda/environment]/var/lib/arriba/blacklist_hg38_GRCh38_v2.4.0.tsv.gz   \
+Fusion genes can be detected by utilizing intermediate files of STAR run as input files for Arriba. Upon completion of the pipeline, the files can be found at [working_directory]/[project_title]/[run_name]/result/star_salmon/[sample_name].Aligned.out.bam  When you [install Arriba using Bioconda](https://arriba.readthedocs.io/en/latest/quickstart/#installation-using-bioconda), Blacklist, Known fusions, and Protein domains of GRCh38 (and others) are included in your conda environment. The files can be found at [path/to/your/conda/environment]/var/lib/arriba/blacklist_hg38_GRCh38_v2.4.0.tsv.gz   \
 
 # Literature
 **Literature :**  \
