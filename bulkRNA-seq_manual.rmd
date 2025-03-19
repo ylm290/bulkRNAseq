@@ -1,0 +1,883 @@
+---
+title: "Bulk RNA-seq Manual v1.2"
+author: "Youkyung Lim"
+affiliation: "Erasmus MC, Department of Immunology, Computational Biology & Bioinformatics in Immunology (CBBI) Group"
+date:  "`r Sys.Date()`"
+output:  rmdformats::downcute
+---
+
+# Introduction 
+**nf-core RNA-seq v.3.12.0 STAR-Salmon :** \
+This pipeline performs read alignment and transcript quantification of bulk RNA-seq data. Based on [nf-core RNA-seq v.3.12.0 STAR-Salmon](https://nf-co.re/rnaseq/3.12.0), a bioinformatics community project for making computational methods portable and reproducible, it runs with [Nextflow](https://www.nextflow.io/about-us.html) workflow manager, and has been optimized for differential expression analysis at the gene level. To demonstrate this pipeline, bulk mRNA-seq dataset with biological replicates and technical replicates from a publication (cited below) had been downloaded and saved in the CBBI server: /home/lety/data/CBBI_Projects/Nextflow_Pipelines_CBBI/raw/mRNA_softlink_zipped/*_zipped.fastq.gz Human genome reference version GRCh38 primary assembly and annotation version Gencode v44 Basic are used. For more information on Gencode Basic: [click here](https://www.ensembl.org/info/genome/genebuild/transcript_quality_tags.html#basic)
+\
+
+**Input files :**  \
+    * *example_DesignFile.csv* : Sample names, (relative or absolute) paths to data files, and [NGS library strandedness](https://salmon.readthedocs.io/en/latest/library_type.html#fragment-library-types) according to [the nf-core guideline.](https://nf-co.re/rnaseq/3.12.0/docs/usage#full-samplesheet)  \
+    * *example_nf-params.json* : Pre-defined nf-core parameters for CBBI RNA-seq_v1.1 pipeline. It includes paths to the reference genome (.fasta) and annotation (.gtf) files.   \
+    * *example_run_nextflow.sh* : Bash script file for initiating a Nextflow run *(a.k.a your magic button)*. You can adjust the 'wdir', 'proj' and 'run' parameters before initiating the run.
+\
+
+**Required changes on *example_run_nextflow.sh* before initiating your run :** \
+Change the three parameters and save the file. Use a descriptive run name. \
+    * wdir = [working_directory]  e.g. /data/CBBI_Projects/Nextflow_Pipelines_CBBI/processed/ylim/ \
+    * proj = [project_title]  e.g. "rnaseq"  \
+    * run = [run_name]  e.g. "star_Salmon_basic_ylim"  \
+Organize your project as [working_directory]/[project_title]/[run_name]/ so you can save the results from multiple runs under a single project folder. Now this is where your "work" and "result" folders will be created from the CBBI RNA-seq_v1.1 run. \
+
+**Before running the pipeline :**  \
+    * Check your raw data size & estimate your project folder size : $ du -hsc /path/to/raw/*.fastq.gz  \
+    * Check storage space in the server : $ df -H /home/lety/data/   \
+    * Coordinate with other users for optimal memory usage : $ htop  \
+
+**Output files :**  \
+    * Quality control (.html) : /result/multiqc/star_salmon/multiqc_report.html \
+    * Alignment files (.markdup.sorted.bam) : /result/star_salmon/[sample_name].markdup.sorted.bam \
+    * Count files merged for all samples (.tsv) : /result/star_salmon/salmon.merged.gene_counts.tsv \
+    * Count files per sample (.sf) : /result/star_salmon/[sample_name]/quant.genes.sf \
+
+**BAM file validation :**  \
+We found truncated BAM files even with successful completion message from the Nextflow run. It is because the server storage got full at the time of writing the files. Such error is not detectable by the original pipeline, hence additional checks on all BAM files are now added in example_run_nextflow.sh. Following files can be found in /result/star_salmon/picard_validatesamfile.  \
+    * bad_bams.fofn : quick check whether the BAM files have EOF (end-of-file) marks.   \
+    * bam_summary.txt : full output of Picard ValidateSamFile  \
+    * error_messages.txt : file name and detected error and warning messages extracted from bam_summary.txt. Please check the [GATK troubleshooting page](https://gatk.broadinstitute.org/hc/en-us/articles/360035891231-Errors-in-SAM-or-BAM-files-can-be-diagnosed-with-ValidateSamFile) for what they mean.  \
+
+**After running the pipeline :**  \
+    * Please check execution report, multiqc report, bam file validation result to assess successful completion of all the stages.   \
+    * Please remove scratch/ and work/ directories in the server.   \
+
+**File tree :**   \
+├── [working_directory]/   \
+│.... ├── example_DesignFile.csv   \
+│.... ├── example_nf-params.json   \
+│.... ├── example_run_nextflow.sh   \
+│.... ├── CBBI_RNAseq_manual.rmd   \
+│.... ├── [project_title]/   \
+│.... │.... ├── [run_name]/   \
+│.... │.... │.... ├── result/   \
+│.... │.... │.... │.... ├── pipeline_info/   \
+│.... │.... │.... │.... │.... ├── execution_report_yyyy-mm-dd_hh-mm-ss.html   \
+│.... │.... │.... │.... ├── multiqc/   \
+│.... │.... │.... │.... │.... ├── star_salmon/   \
+│.... │.... │.... │.... │.... │.... ├── multiqc_report.html   \
+│.... │.... │.... │.... ├── star_salmon/   \
+│.... │.... │.... │.... │.... ├── [sample_name].markdup.sorted.bam   \
+│.... │.... │.... │.... │.... ├── [sample_name].Aligned.out.bam   \
+│.... │.... │.... │.... │.... ├── salmon.merged.gene_counts.tsv   \
+│.... │.... │.... │.... │.... ├── salmon.merged.gene_tpm.tsv   \
+│.... │.... │.... │.... │.... ├── [sample_name]/   \
+│.... │.... │.... │.... │.... │.... ├── quant.genes.sf   \
+│.... │.... │.... │.... │.... │.... ├── quant.sf   \
+│.... │.... │.... │.... │.... ├── picard_validatesamfile/   \
+│.... │.... │.... │.... │.... │.... ├── error_messages.txt   \
+│.... │.... │.... ├── work/   \
+│.... │.... │.... ├── scratch/   \
+│.... │.... │.... ├── DEAoutput/   \
+│.... │.... │.... │.... ├── Counts.csv   \
+│.... │.... │.... │.... ├── TPM.csv   \
+│.... │.... │.... │.... ├── plot_*.pdf   \
+│.... │.... │.... │.... ├── DEA_all_genes.csv   \
+│.... │.... │.... │.... ├── DEA_significant_genes.csv   \
+│.... │.... │.... │.... ├── DEA_all_genes_IPA.txt   \
+│.... │.... │.... │.... ├── fgsea_result.txt   \
+│.... │.... │.... │.... ├── fgsea_result_main.txt   \
+
+
+# Set up for DEA
+This R Markdown documents (.RMD) file reads in the output files of CBBI RNA-seq_v1.1 pipeline and detects differentially expressed genes using [DESeq2 package](http://bioconductor.org/packages/release/bioc/vignettes/DESeq2/inst/doc/DESeq2.html#standard-workflow). It is assumed that this file is in the same *[working_directory]*. Any figures and gene lists from the analysis would be saved under *[working_directory]/[project_title]/[run_name]/DEAoutput*. 
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, width = 100)
+```
+
+```{r message=FALSE,  warnings=FALSE}
+seed <- 20230816
+
+## install pacman library if not installed
+if ( !require("pacman", character.only = TRUE)) {install.packages("pacman", dependencies = TRUE, quiet = TRUE) }
+
+## load and install libraries using pacman
+pacman::p_load("dplyr", "ggplot2", "ggfortify", "DESeq2", "IHW", "apeglm", "ashr", "xlsx", "pheatmap", "RColorBrewer", "gridExtra", "ggvenn", "dendextend", "seriation", "Rtsne", "tximport", "tidyr", "plyr", "ggvenn", "ggrepel", "plotly", "ggplotify", "goseq", "stringr", "msigdbr", "clusterProfiler", "fgsea", "data.table", "corrplot", "GenomicTools.fileHandler", "AnnotationDbi", "org.Hs.eg.db", "DT")
+
+'%notin%'<- Negate('%in%')
+
+## aesthetics
+color <- list(Condition = c("cornflowerblue","orange2"), 
+              Replicate = c("royalblue4","mediumseagreen","mediumorchid3"), 
+              Extra = c("darkgreen", "firebrick3", "darkcyan", "deeppink2"))
+
+Theme.YL <- ggplot2::theme(text = element_text(size = 14),  # family = "Sans", 
+                  plot.title = element_text(size = rel(1.3), hjust=0.5),
+                  plot.subtitle = element_text(size = rel(1), hjust=0.5),
+                  # axis.title.x = element_text(size = rel(1)),
+                  # axis.title.y = element_text(size = rel(1)),
+                  legend.text = element_text(size = rel(0.8)),
+                  panel.background = element_rect(fill = 'white', colour = NA),
+                  panel.border = element_rect(fill = NA, colour = 'grey20'),
+                  strip.background = element_rect(colour = 'grey20', fill = 'white'),
+                  panel.grid.major = element_line(colour = 'grey70', linetype = 'dotted'),
+                  plot.margin = unit(c(2,2,2,2), "cm"))
+```
+
+## Create SampleSheet
+SampleSheet contains sample name, various file paths, condition (i.e. CC_CR and CC), biological replicates (i.e. rep1, rep2, and rep3), and technical replicates (i.e. s1, s2, s3, and s4).
+```{r}
+wdir <- ""  # getwd() # working directory
+proj <- "rnaseq"  # your project title 
+runname <- "star_Salmon_basic_ylim"  # descriptive run name 
+outdir <- paste0(getwd(), "/", "DEAoutput/")  #"DEAoutput/" # where DEA results will be saved
+
+## create output directory if it does not exist yet
+ifelse(!dir.exists(file.path(outdir)), dir.create(file.path(outdir)), FALSE) 
+
+## create SampleSheet from the design file
+SampleSheet <- read.csv2(paste0(wdir, "/", "example_DesignFile.csv"), sep = ",")
+
+## condition
+SampleSheet$condition <- unlist(lapply(strsplit(SampleSheet$sample, "_"), 
+                                       function(x) paste(x[1:(length(x)-2)], collapse = "_")))
+SampleSheet <- SampleSheet %>% mutate(condition = as.factor(condition))
+
+## biological replicate
+SampleSheet$bio_rep <- unlist(lapply(strsplit(SampleSheet$sample, "_"), 
+                                     function(x) ifelse(length(x)==4, paste(x[1:(length(x)-1)], collapse = "_"), paste(x[1:(length(x)-1)], collapse = "_"))))
+
+## technical replicate
+SampleSheet$tech_rep <- unlist(lapply(strsplit(SampleSheet$sample, "_"), 
+                                      function(x) ifelse(length(x)==4, paste(x[3:(length(x)-1)], collapse = "_"), paste(x[2:(length(x)-1)], collapse = "_"))))
+
+## path to the count files
+SampleSheet$Salmon_basic_gene_counts <- unlist(lapply(SampleSheet$sample, 
+                                                      function(x) paste0(wdir, "/", proj, "/", runname, "/result/star_salmon/",x,"/quant.genes.sf")))
+SampleSheet$Salmon_basic_transcript_counts <- unlist(lapply(SampleSheet$sample, 
+                                                            function(x) paste0(wdir, "/", proj, "/", runname, "/result/star_salmon/",x,"/quant.sf")))
+
+## SampleSheet
+DT::datatable(SampleSheet,
+  caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::em('SampleSheet')))
+```
+
+
+## Load in count matrix 
+Import [the output of Salmon](https://salmon.readthedocs.io/en/nb/file_formats.html#quantification-file) (i.e. quant.genes.sf), which includes relative abundance (=TPM, Transcripts Per Million), estimated counts, and effective length. 
+```{r GetCounts_mRNA, message=FALSE, warning=FALSE}
+## Import the count files using tximport. tximport will automatically group the data on predefined groups. Filepaths and SampleTitle must be in the same order!
+GetCounts_mRNA <- function(FilePaths, SampleTitle, QuantType) {
+  genIdCol <- ifelse(QuantType == "rsem", "gene_id", "Name")
+  Temp.Files <- FilePaths
+  names(Temp.Files) <- SampleTitle
+  tximport_Counts <- tximport::tximport(Temp.Files, type=QuantType, txIn = F, txOut = F, geneIdCol = genIdCol)
+  tximport_Counts[["length"]][which(tximport_Counts[["length"]] == 0)] <- 1
+  return(tximport_Counts)
+}
+
+## gene-level.
+Salmon.basic.Counts <- GetCounts_mRNA(SampleSheet$Salmon_basic_gene_counts, SampleSheet$sample, "salmon")
+
+## transcript-level.
+# Salmon.basic.trans.Counts <- GetCounts_mRNA(SampleSheet$Salmon_basic_transcript_counts, SampleSheet$sample, "salmon")
+
+## save TPM and Counts into CSV files
+write.csv(Salmon.basic.Counts$abundance, file = paste0(outdir,"TPM.csv"))
+write.csv(Salmon.basic.Counts$counts, file = paste0(outdir,"Counts.csv"))
+```
+
+## Inspect the data
+Distribution of genes with zero count across all samples. The genes that are not detected in all 24 samples can be filtered out before performing DESeq. 
+```{r fig.width=12, fig.height=10}
+## row-wise (per gene) frequency of zeros
+df <- data.frame(Salmon.basic.Counts$counts)
+df$numZero <- rowSums(df == 0)
+df$row.names <- rownames(df)
+
+ggplot(df[,c('row.names', 'numZero')], aes(x=numZero)) + 
+  geom_histogram(binwidth = function(x) 2 * IQR(x) / (length(x)^(1/3))) + 
+  stat_bin(binwidth=1, center=0, geom="text", aes(label=after_stat(count)), vjust=-0.5, closed="left") + 
+  labs(title = "Distribution of genes with zero counts", x = "Number of zero counts across samples", y = "Frequency") + 
+  theme(plot.title = element_text(hjust = 0.5)) + Theme.YL
+```
+# Differential Expression Analysis
+## The two conditions : CC-CR vs. CC
+"Cetuximab and panitumumab are epidermal growth factor receptor (EGFR) monoclonal antibodies (mAbs) that bind the extracellular domain of EGFR and enhance receptor internalization and degradation. These EGFR mAbs are common targeted agents for patients with wild-type KRAS metastatic colorectal cancer (CRC). ... We generated a cell line from colonies with cystic morphology, which we designated cystic colonies (CC) and cetuximab-resistant CC (CC-CR). CC tumors were well differentiated and regressed following administration of cetuximab. CC-CR tumors were poorly differentiated and continued to grow in the presence of cetuximab, although not to the extent of untreated tumors."
+```{r message=FALSE}
+## Create colData
+coldata <- SampleSheet[,c("sample","condition","bio_rep", "tech_rep")]
+
+## factorize $condition with "CC" condition as reference
+coldata$condition <- factor(coldata$condition)
+coldata$condition <- relevel(coldata$condition, ref = "CC")
+rownames(coldata) <- coldata$sample
+coldata$sample <- NULL
+
+## Reorder counts to the coldata
+Salmon.basic.Counts.Ordered <- lapply(Salmon.basic.Counts[1:length(Salmon.basic.Counts)-1], function(x) data.frame(x) %>% dplyr::select(rownames(coldata)) %>% as.matrix())
+Salmon.basic.Counts.Ordered$countsFromAbundance <- Salmon.basic.Counts$countsFromAbundance
+
+## create DDS (DESeq Data Set)
+dds.Salmon.basic <- DESeq2::DESeqDataSetFromTximport(txi = Salmon.basic.Counts.Ordered, 
+                                                    colData = coldata,
+                                                    design = ~condition)
+dds.Salmon.basic
+```
+
+## Pre-filtering
+```{r message=FALSE}
+## filter out the genes with zero count across all samples
+keep <- rowSums(counts(dds.Salmon.basic)) > 0
+dds.Salmon.basic <- dds.Salmon.basic[keep,]
+```
+
+```{r message=FALSE}
+## (optional) filter out mitochondrial genes
+# Create a mapping from Ensembl gene IDs to gene names so we can remove MT- genes
+gtf.path <- "/path/to/gencode.v44.primary_assembly.basic.annotation.gtf"
+gtf.data <- GenomicTools.fileHandler::importGTF(gtf.path, level="gene", features=c("gene_id", "gene_name", "gene_type"))
+gene.map <- gtf.data[, c("gene_id", "gene_name")]
+
+# Merge DESeqDataSet gene IDs with gene names from GTF
+gene.map <- merge(data.frame(gene_id = rownames(dds.Salmon.basic)), 
+                  gene.map, 
+                  by = "gene_id", all.x = TRUE)
+
+# Identify mitochondrial genes by gene name (adjust this according to your dataset)
+mito.genes <- grep("^MT-", gene.map$gene_name, value = TRUE)
+
+# Filter out mitochondrial genes from the DESeqDataSet
+dds.Salmon.basic.filtered <- dds.Salmon.basic[!rownames(dds.Salmon.basic) %in% 
+                                                gene.map$gene_id[gene.map$gene_name %in% mito.genes], ]
+```
+
+```{r}
+## (optional) pre-filtering based on biotypes (gene_type) from the gtf file
+## https://www.gencodegenes.org/pages/biotypes.html
+biotype.map <- gtf.data[, c("gene_id", "gene_type")]
+unique(biotype.map$gene_type)
+```
+
+(optional) pre-filtering to keep only rows that have a count of at least 10 for a minimal number of samples
+(optional) pre-filtering lowly expressed genes log(tpm+1) > 0.5
+
+```{r fig.width=12, fig.height=10}
+## row-wise (per gene) frequency of zeros
+df <- data.frame(counts(dds.Salmon.basic.filtered))
+df$numZero <- rowSums(df == 0)
+df$row.names <- rownames(df)
+
+ggplot(df[,c('row.names', 'numZero')], aes(x=numZero)) + 
+  geom_histogram(binwidth = function(x) 2 * IQR(x) / (length(x)^(1/3))) + 
+  stat_bin(binwidth=1, center=0, geom="text", aes(label=after_stat(count)), vjust=-0.5, closed="left") + 
+  labs(title = "Distribution of genes with zero counts", x = "Number of zero counts across samples", y = "Frequency") + 
+  theme(plot.title = element_text(hjust = 0.5)) + Theme.YL
+```
+
+## Perform DEA & DESeq2 results
+```{r}
+## perform DESeq
+dds.Salmon.basic.filtered <- DESeq2::DESeq(dds.Salmon.basic.filtered)
+```
+
+- "CC" condition as control & FDR < 0.05. 
+- cooksCutoff = TRUE (default): This resets p-values of outlier genes to NA, removing their influence on the results.
+- independentFiltering = TRUE (default): This filters out genes with low counts or high variability, helping to focus on more reliable result.
+- filterFun = ihw: This applies the 'Independent hypothesis weighting' method to adjust p-values for multiple comparisons, reducing false positives.
+```{r}
+## DESeq2 results
+FDR = 0.05 
+res.Salmon.basic <- DESeq2::results(dds.Salmon.basic.filtered, 
+                                    pAdjustMethod = "BH", alpha = FDR, 
+                                    contrast = c("condition", "CC_CR", "CC"), 
+                                    cooksCutoff = TRUE, 
+                                    independentFiltering = TRUE, 
+                                    filterFun=ihw) 
+
+## Column names of the DESeq2 results
+data.frame(mcols(res.Salmon.basic, use.names=T))
+
+## Summary of the DESeq result
+summary(res.Salmon.basic)
+
+## How many adjusted p-values were less than 0.05?
+sum(res.Salmon.basic$padj < FDR, na.rm=TRUE)
+
+## Meta data
+metadata(res.Salmon.basic)
+```
+
+### Add gene names to the result using the same gtf file 
+```{r}
+res.Salmon.basic$gene <- gtf.data$gene_name[match(rownames(res.Salmon.basic), gtf.data$gene_id)]
+res.Salmon.basic$ensembl <- gsub('\\..+$', '', rownames(res.Salmon.basic))
+res.Salmon.basic$entrez <- AnnotationDbi::mapIds(org.Hs.eg.db::org.Hs.eg.db, keys=res.Salmon.basic$ensembl, column="ENTREZID", keytype="ENSEMBL", multiVals = "first")
+```
+
+## Data Visualization
+### Log fold change (LFC) shrinkage
+Shrinkage of effect size (LFC estimates) is useful for visualization and ranking of genes. 'apeglm' and 'ashr' are preferred method over 'normal'. Please read more about each method from the original papers (cited below) as well as from the [Alternative shrinkage estimators](https://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html#shrink) and [Extended section on shrinkage estimators](https://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html#extended-section-on-shrinkage-estimators). As for deciding between apeglm vs. ashr, see [this thread](https://support.bioconductor.org/p/9144336/) and [this thread](https://support.bioconductor.org/p/134711/).
+```{r message=FALSE}
+## LFC shrinkage methods : type = c("apeglm", "ashr", "normal")
+resLFC.Salmon.basic.apeglm <- DESeq2::lfcShrink(dds.Salmon.basic.filtered, res = res.Salmon.basic, type = "apeglm", 
+                                                coef = "condition_CC_CR_vs_CC")
+resLFC.Salmon.basic.ashr <- DESeq2::lfcShrink(dds.Salmon.basic.filtered, res = res.Salmon.basic, type = "ashr")
+resLFC.Salmon.basic.normal <- DESeq2::lfcShrink(dds.Salmon.basic.filtered, res = res.Salmon.basic, type = "normal",
+                                                coef = "condition_CC_CR_vs_CC")
+
+## reorder by adjusted p-value
+resLFC.Salmon.basic.apeglm <- resLFC.Salmon.basic.apeglm[order(resLFC.Salmon.basic.apeglm$padj),]
+resLFC.Salmon.basic.ashr <- resLFC.Salmon.basic.ashr[order(resLFC.Salmon.basic.ashr$padj),]
+resLFC.Salmon.basic.normal <- resLFC.Salmon.basic.normal[order(resLFC.Salmon.basic.normal$padj),]
+```
+
+```{r fig.width=12, warning=FALSE}
+## MA plot before/after shrinkage
+Plot.MA <- function(ma.data, baseMeanCutoff = 10, FDR = 0.05, title = "", colSig = "black") {
+
+  ma <- data.frame(ma.data)
+  ma <- ma %>% dplyr::mutate(isDE = case_when(
+    abs(log2FoldChange) > 0.5 & baseMean >= baseMeanCutoff & padj < FDR ~ TRUE,
+    TRUE ~ FALSE),
+    isDE = as.factor(isDE))
+  
+  ma <- ma %>% dplyr::arrange(isDE)
+  
+  ma.plot <- ma %>% data.frame() %>% ggplot2::ggplot(aes(x=baseMean, y=log2FoldChange, color=isDE, shape=isDE, fill=isDE)) +
+    geom_point(aes(shape = isDE, color=isDE), size = 3) +
+    scale_x_continuous(trans = "log10") +
+    scale_color_manual(values = c("grey80", colSig)) +
+    scale_shape_manual(values= c(19,16)) +
+    geom_vline(xintercept = 50, color = 'grey50', linetype = "dashed") +
+    geom_hline(yintercept = c(-.5, .5), color = 'grey50', linetype = "dashed") +
+    Theme.YL + ggtitle(label = title)
+    
+  plot(ma.plot)
+  
+}
+
+Plot.MA(res.Salmon.basic, title = paste("MA plot (before shrinkage)", 
+              "min:", round(range(res.Salmon.basic$log2FoldChange),2)[1], 
+              "max:", round(range(res.Salmon.basic$log2FoldChange),2)[2]), 
+        colSig = color$Extra[1])
+
+Plot.MA(resLFC.Salmon.basic.apeglm, title = paste("MA plot (after apeglm shrinkage)", 
+                                           "min:", round(range(resLFC.Salmon.basic.apeglm$log2FoldChange),2)[1], 
+                                           "max:", round(range(resLFC.Salmon.basic.apeglm$log2FoldChange),2)[2]), 
+        colSig = color$Extra[2])
+
+Plot.MA(resLFC.Salmon.basic.ashr, title = paste("MA plot (after ashr shrinkage)", 
+                                                "min:", round(range(resLFC.Salmon.basic.ashr$log2FoldChange),2)[1], 
+                                                "max:", round(range(resLFC.Salmon.basic.ashr$log2FoldChange),2)[2]), 
+        colSig = color$Extra[3])
+
+Plot.MA(resLFC.Salmon.basic.normal, title = paste("MA plot (after normal shrinkage)", 
+                                                  "min:", round(range(resLFC.Salmon.basic.normal$log2FoldChange),2)[1], 
+                                                  "max:", round(range(resLFC.Salmon.basic.normal$log2FoldChange),2)[2]), 
+        colSig = color$Extra[4])
+```
+
+### Save DEA result
+#### Save DEA result - Shrunk LFC
+```{r}
+## choose one shrinkage method
+resLFC.Salmon.basic <- resLFC.Salmon.basic.normal
+rm(resLFC.Salmon.basic.apeglm, resLFC.Salmon.basic.ashr)
+
+write.table(resLFC.Salmon.basic, file = paste0(outdir,"DEA_all_genes_shrunkLFC.tsv"), sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE)
+```
+
+#### IPA formatted file - after shrinkage of LFC
+```{r}
+ipa <- resLFC.Salmon.basic[,c("gene","ensembl","entrez", "baseMean", "log2FoldChange","pvalue", "padj")]
+write.table(ipa, file = paste0(outdir,"DEA_all_genes_IPA.txt"), sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE)
+```
+
+### Volcano Plot 
+A volcano plot allows quick visual identification of genes with large fold changes that are also statistically significant. These may be the most biologically significant genes.
+```{r fig.width=12, fig.height=10, warning=FALSE, message=FALSE}
+mean.cutoff = 10
+lfc.cutoff = 0.5 
+threshold <- resLFC.Salmon.basic$padj < FDR & 
+  resLFC.Salmon.basic$baseMean > mean.cutoff & 
+  abs(resLFC.Salmon.basic$log2FoldChange) > lfc.cutoff
+
+df <- data.frame(resLFC.Salmon.basic) 
+df$Significant <- threshold
+df$genelabels <- rownames(df) %in% rownames(df)[df$Significant == TRUE][1:10]
+
+p <- ggplot(df) +
+  geom_point(aes(x = log2FoldChange, y = -log10(padj), colour = Significant, alpha = Significant, size = Significant)) +
+  scale_color_manual(values=color$Extra) +
+  geom_label_repel(aes(x = log2FoldChange, y = -log10(padj), label = ifelse(genelabels == T, df$gene,""))) +
+  labs(title = "Volcano Plot (CC_CR vs. CC)", 
+       subtitle = paste0("10 significant genes are labelled. LFC cutoff = ", lfc.cutoff, 
+                         ", p-value cutoff = ", FDR, ", baseMean cutoff = ", mean.cutoff)) + 
+  xlab("log2 fold change") +  ylab("-log10 adjusted p-value") + 
+  geom_vline(xintercept = c(lfc.cutoff, -lfc.cutoff),  colour = "grey50", linetype = 'dashed') + 
+  geom_hline(yintercept = FDR, colour = "grey50", linetype = 'dashed') + 
+  Theme.YL + scale_size_manual(values = c(1,2))
+plot(p)
+
+```
+```{r echo=F}
+png(paste0(outdir,"plot_Volcano.png"), width = 1000, height = 900, units = "px")
+print(p)
+dev.off()
+```
+
+### PlotCounts
+Check out counts for a gene of your interest. Normalized counts plus a pseudocount of 0.5 are shown by default.
+```{r fig.width=10, fig.height=8, warning=FALSE}
+gene.interest.name =  "MIR100HG" # high variability within CC_CR group 
+gene.interest = rownames(resLFC.Salmon.basic[resLFC.Salmon.basic$gene == gene.interest.name,]) 
+
+d <- plotCounts(dds.Salmon.basic.filtered, gene = gene.interest, intgroup = "condition", returnData = TRUE)
+d$name <- rownames(d)
+d$tech_rep <- SampleSheet$tech_rep
+
+ggplot(d, aes(x=condition, y=count, color=tech_rep)) + scale_color_manual(values=color$Replicate) + scale_fill_manual(values=color$Condition) +
+  geom_point(position=position_jitter(w=0.1,h=0)) + geom_boxplot(aes(group = condition, fill= condition),alpha = 0.3) + #geom_text_repel(aes(label = name)) +
+  ggtitle(paste(gene.interest.name, "")) + Theme.YL
+
+gene.interest.name =  "RPL5" # low variability within groups
+gene.interest = rownames(resLFC.Salmon.basic[resLFC.Salmon.basic$gene == gene.interest.name,]) 
+
+d <- plotCounts(dds.Salmon.basic.filtered, gene = gene.interest, intgroup = "condition", returnData = TRUE)
+d$name <- rownames(d)
+d$tech_rep <- SampleSheet$tech_rep
+
+ggplot(d, aes(x=condition, y=count, color=tech_rep)) + scale_color_manual(values=color$Replicate) + scale_fill_manual(values=color$Condition) +
+  geom_point(position=position_jitter(w=0.1,h=0)) + geom_boxplot(aes(group = condition, fill= condition),alpha = 0.3) + #geom_text_repel(aes(label = name)) +
+  ggtitle(paste(gene.interest.name, "")) + Theme.YL
+```
+
+## Clustering anlaysis
+### Data Transformation
+For visualization or clustering, it might be useful to work with transformed versions of the count data. The regularized log (rlog) function transforms the count data to the log2 scale in a way which minimizes differences between samples for rows with small counts, and which normalizes with respect to library size. The rlog transformation produces a similar variance stabilizing effect as Variance Stabilizing Transformation (vst), though rlog is more robust in the case when the size factors vary widely.
+
+```{r}
+TransformCounts <- function(ddsMatrix, TransformationType = "rlog", blind = TRUE, fitType = "parametric") {
+  ## user can choose between rlog and vst as their data transformation method
+  ## check if the ddsMatrix contains already calculated dispersion values or not
+    if (sum(is.na(SummarizedExperiment::rowData(ddsMatrix)[,"dispersion"])) == 0) {
+      transformedCounts <- switch(
+        TransformationType,
+        "rlog" = DESeq2::rlog(ddsMatrix, fitType = fitType, blind = blind),
+        "vst" = DESeq2::varianceStabilizingTransformation(ddsMatrix, fitType = fitType, blind = blind)) 
+      } else {
+        transformedCounts <- switch(
+          TransformationType,
+          "rlog" = DESeq2::rlog(estimateDispersions(estimateSizeFactors(ddsMatrix)), fitType = fitType, blind = blind), 
+          "vst" = DESeq2::varianceStabilizingTransformation(estimateDispersions(estimateSizeFactors(ddsMatrix)), fitType = fitType, blind = blind))
+          }
+  hist(assay(ddsMatrix))
+  hist(assay(transformedCounts))
+  return(transformedCounts)
+}
+```
+
+```{r}
+## all genes : N = 34378 
+rlog.dds.Salmon.basic <- TransformCounts(dds.Salmon.basic.filtered, "rlog")
+```
+
+```{r}
+## Criteria : baseMean > 10 AND adjusted p-value < 0.05 AND |log2FoldChange| > 0.5
+# replace NA values to FC:0 and padj:1, then select significant genes
+res.Salmon.basic.Filter <- res.Salmon.basic %>% data.frame() %>%
+  dplyr::mutate_at(vars(contains("log2FoldChange")), ~replace(., is.na(.), 0)) %>%
+  dplyr::mutate_at(vars(contains("padj")), ~replace(., is.na(.), 1)) %>%
+  dplyr::filter(baseMean > mean.cutoff, padj < FDR, abs(log2FoldChange) > lfc.cutoff)
+res.Salmon.basic.Filter <- res.Salmon.basic.Filter[order(res.Salmon.basic.Filter$padj),]
+
+## only the significant genes : N = 831 
+rlog.dds.Salmon.basic.sig <- TransformCounts(dds.Salmon.basic.filtered[rownames(res.Salmon.basic.Filter),], "rlog") 
+dds.Salmon.basic.filtered[rownames(res.Salmon.basic.Filter),]
+```
+
+### Visualizing clusters with heatmap and dendogram
+Using the count matrix with all genes, rlog transformation had been performed, and Euclidean distances among the samples are visualized as a heatmap and hierarchical clustering is performed using complete linkage method. Learn more about how to use pheatmap package: [click here](https://bioinformatics.ccr.cancer.gov/docs/data-visualization-with-r/Lesson5_intro_to_ggplot/)
+```{r fig.width=12, fig.height=10}
+## calculate distance 
+sampleDists <- dist(t(assay(rlog.dds.Salmon.basic)), method = "euclidean")
+sampleDistMatrix <- as.matrix(sampleDists)
+
+## annotation color
+mat_col <- data.frame(Condition = rlog.dds.Salmon.basic$condition, Replicate = rlog.dds.Salmon.basic$tech_rep)
+rownames(mat_col) <- colnames(sampleDistMatrix)
+mat_colors <- list(Condition = color$Condition, Replicate = color$Replicate)
+names(mat_colors$Condition) <- unique(mat_col$Condition)
+names(mat_colors$Replicate) <- unique(mat_col$Replicate)
+
+## heatmap
+p <- ggplotify::as.ggplot(pheatmap(mat = sampleDistMatrix,
+         clustering_distance_rows=sampleDists, clustering_distance_cols=sampleDists,
+         clustering_method = "complete",
+         color = colorRampPalette(rev(brewer.pal(n = 9, name =  "YlGnBu")))(255),
+         border_color = NA, cutree_cols=2, show_rownames = FALSE, fontsize = 15, #fontfamily = "Sans",
+         width = ncol(sampleDistMatrix)*unit(7, "mm"), height = nrow(sampleDistMatrix)*unit(7, "mm"),
+         cellwidth = 20, cellheight = 16,
+         annotation_col = mat_col, annotation_colors = mat_colors, 
+         main = "Clustering heatmap using all genes"))
+```
+
+```{r echo=F, fig.width=12, fig.height=10}
+pdf(paste0(outdir,"plot_Heatmap_all.pdf"), width=12, height=10)
+print(p)
+dev.off()
+```
+
+Same as the plot above, but using the count matrix with only the significant genes.
+```{r, fig.width=12, fig.height=10}
+## calculate distance 
+sampleDists <- dist(t(assay(rlog.dds.Salmon.basic.sig)), method = "euclidean")
+sampleDistMatrix <- as.matrix(sampleDists)
+
+## annotation color
+mat_col <- data.frame(Condition = rlog.dds.Salmon.basic.sig$condition, Replicate = rlog.dds.Salmon.basic.sig$tech_rep)
+rownames(mat_col) <- colnames(sampleDistMatrix)
+mat_colors <- list(Condition = color$Condition, Replicate = color$Replicate)
+names(mat_colors$Condition) <- unique(mat_col$Condition)
+names(mat_colors$Replicate) <- unique(mat_col$Replicate)
+
+
+## heatmap
+p <- ggplotify::as.ggplot(pheatmap(mat = sampleDistMatrix,
+         clustering_distance_rows=sampleDists, clustering_distance_cols=sampleDists,
+         clustering_method = "complete",
+         color = colorRampPalette(rev(brewer.pal(n = 9, name =  "YlGnBu")))(255),
+         border_color = NA, cutree_cols=2, show_rownames = FALSE, fontsize = 15, #fontfamily = "Sans",
+         width = ncol(sampleDistMatrix)*unit(7, "mm"), height = nrow(sampleDistMatrix)*unit(7, "mm"),
+         cellwidth = 20, cellheight = 16,
+         annotation_col = mat_col, annotation_colors = mat_colors, 
+         main = "Clustering heatmap using Significant genes"))
+```
+
+```{r echo=F, fig.width=12, fig.height=10}
+pdf(paste0(outdir,"plot_Heatmap_sig.pdf"), width=12, height=10)
+print(p)
+dev.off()
+```
+
+### PCA and t-SNE plot
+To make the large dataset of 34395 rows and 6 columns, dimensionality reduction techniques like PCA (Principal component analysis) and t-SNE (t-distributed stochastic neighbor embedding) are utilized for data visualization. We can utilize the clustering results as quality control measure of the experiment. 
+```{r ClusterAnalysis, fig.width= 12, fig.height= 10, echo=FALSE, warning=FALSE}
+
+ClusterAnalysis <- function(dds_rlog, rlog_Groups, NormCounts, AnnotationDF, GroupNames, NormMethod, MeanCountCutOff, LabelNames){
+  ## Optional DESeq2 normalized MeanCounts cutoff. Leave empty if you want no cutoff
+  if (!missingArg(MeanCountCutOff)) {
+    NormCounts.Mean <- NormCounts
+    NormCounts.Mean <- subset(NormCounts.Mean, rowMeans(NormCounts.Mean) > MeanCountCutOff)
+    
+    dds_rlog <- dds_rlog[rownames(NormCounts.Mean),]
+    NormCounts <- NormCounts[rownames(NormCounts),]
+    
+  }
+  
+  if (missingArg(LabelNames)) {
+    LabelNames <- FALSE
+    
+  }
+  
+  ## PCA Analysis
+  Data.PCA <- assay(dds_rlog)
+  Data.PCA <- Data.PCA[rowSums(Data.PCA) != 0,]
+  Data.PCA <- as.data.frame(t(Data.PCA))
+  
+  PCA_results <- prcomp(Data.PCA, scale. =F)
+  Summary.PCA_results <- summary(PCA_results)
+  
+  ## using ggplot - dual y-axis (continuous)
+  PCA_results.VarExplained <- data.frame(PC = paste0("PC",1:20),
+                                         VarExplained=Summary.PCA_results$importance[2,][1:20]*100,
+                                         CumulProportion = round(cumsum(Summary.PCA_results$sdev^2 / sum(Summary.PCA_results$sdev^2))[1:20]*100, 3))
+  ## Scree plot
+  ScreePlot <- ggplot(data = PCA_results.VarExplained, aes(x=reorder(PC, -VarExplained, group = 1))) +
+    geom_bar(aes(y=VarExplained), stat = "identity", fill = color$Extra[1]) +
+    geom_point(aes(y=CumulProportion), group = 1, color = color$Extra[2]) + geom_line(aes(y=CumulProportion), group = 1, color = color$Extra[2]) +
+    scale_y_continuous("Variance Explained", sec.axis = sec_axis(~ . * 1, name = "Cumulative Proportion of Variance")) +
+    labs(title = "Scree plot", subtitle = paste0(NormMethod," transformed data"), x = "Principal Component") + Theme.YL +
+    theme(axis.title.y = element_text(color = color$Extra[1]),
+          axis.title.y.right = element_text(color = color$Extra[2]))
+
+  pdf(paste0(outdir,"plot_Scree.pdf"), width=12, height=10)
+  plot(ScreePlot)
+  dev.off()
+  plot(ScreePlot)
+
+  ## PCA plot
+  for (Group in 1:length(GroupNames)) {
+    Data.PCA[length(colnames(Data.PCA))+1] <- AnnotationDF[,Group]
+    colnames(Data.PCA)[length(colnames(Data.PCA))] <- GroupNames[Group]
+  }
+  
+  for (i in 1:3) {
+     PCA <- ggplot2::autoplot(PCA_results, x = (i*2)-1, y = (i*2), data=Data.PCA, frame = F, colour = GroupNames[1], shape = ifelse(length(GroupNames) > 1, GroupNames[2], 16), size = 2.5) +
+    {
+      if (length(GroupNames) > 1){
+        scale_shape_manual(values=1:nrow(unique(AnnotationDF[GroupNames[2]])))
+      }
+    } +
+    labs(title=paste0("PCA plot"), subtitle = paste0(NormMethod," transformed data, n genes = ",length(colnames(Data.PCA)))) +
+    {
+      if (LabelNames == TRUE & i == 1) {
+        geom_text_repel(aes(x = PC1, y = PC2, label = rownames(Data.PCA)), color="gray3")
+      }
+    } +
+    scale_color_manual(values = color$Condition) + Theme.YL
+
+  pdf(paste0(outdir,"plot_PCA_", i, ".pdf"), width=12, height=10)
+  plot(PCA)
+  dev.off()
+  plot(PCA)
+  }
+  
+  ## t-SNE plot 
+  set.seed(seed) 
+  res.tsne <-  Rtsne(t(assay(dds_rlog)), dims = 2,  perplexity = 5, check_duplicates = FALSE)
+
+  df.tsne <- data.frame(x = res.tsne$Y[,1], y = res.tsne$Y[,2], Condition = SampleSheet$condition, Sample = SampleSheet$sample)
+  TSNE <- ggplot2::ggplot(df.tsne) + geom_point(aes(x=x, y=y, color = Condition)) + scale_color_manual(values=color$Condition) + geom_text_repel(aes(x = x, y = y, label = Sample), color="gray3") + 
+    labs(title="t-SNE plot", subtitle = paste0(NormMethod," transformed data, perplexity = 5"), x = "Dimension 1", y = "Dimension 2") + Theme.YL 
+
+  pdf(paste0(outdir,"plot_TSNE.pdf"), width=12, height=10)
+  plot(TSNE)
+  dev.off()
+  plot(TSNE)
+  }
+
+
+ClusterAnalysis(dds_rlog = rlog.dds.Salmon.basic, NormCounts = data.frame(counts(rlog.dds.Salmon.basic, normalized = T)), AnnotationDF = as.data.frame(SampleSheet$condition, SampleSheet$sample), GroupName = "Condition", NormMethod = "rlog", LabelNames = T)
+```
+
+## Recreation of Figure 2a
+### Scaling (z-transformation)
+```{r z-transform, fig.width= 12, fig.height=14}
+z_Transform <- function(rlog_dds) {
+  normalized.counts = SummarizedExperiment::assay(rlog_dds)
+  ## gene-wise z-transformation
+  m = apply(normalized.counts, 1, mean)
+  s = apply(normalized.counts, 1, sd)
+  z = data.frame((normalized.counts - m)/s)
+  ## add gene names
+  # gtf.data <- GenomicTools.fileHandler::importGTF(gtf.path, level="gene", features=c("gene_id", "gene_name", "gene_type"))
+  z$gene = gtf.data$gene_name[match(rownames(rlog_dds), gtf.data$gene_id)]
+  z$ensembl <- gsub('\\..+$', '', rownames(rlog_dds))
+  z$entrez <- AnnotationDbi::mapIds(org.Hs.eg.db::org.Hs.eg.db, keys=z$ensembl, column="ENTREZID", keytype="ENSEMBL", multiVals = "first")
+  return(z)
+}
+
+
+z.counts <- z_Transform(rlog.dds.Salmon.basic)
+write.csv(z.counts, file = paste0(outdir,"gene-wise-z-transformation.csv"))
+```
+
+### Recreation of Figure 2a
+Heatmap of the top 50 differentially expressed transcripts in CC-CR versus CC from three independent 3D culture experiments. Gene expression values are gene-wise z-transformed and are colored red for high abundance and blue for low abundance, as indicated in the scale bar. 
+```{r fig.width= 12, fig.height=14}
+## Top 50 genes from the original paper (fig 2a)
+top50 = c("MIR100HG","HS3ST5","A2M","ZNF804A", "ARHGAP29", "SESN3", "SATB1", "SERPINE2", "AKAP12", "EPHB6", "GAS6", "IGFBP6", "CUEDC1", "CGN", "MESDC1", "VIL1", "SNTB1", "RP11-395P17.3", "ALPK3", "LOXL1", "CAPS", "FYN", "H19", "RASGRF1", "CDK6", "PKP1", "DYSF", "HLA-DRA", "ENC1", "QPCT", "IGF2BP2", "AC007952.5", "SPDYC", "HOXD10", "CIB2", "CFTR", "HOXD11", "TEX30", "LINC01018", "SERTAD4", "DKK3", 'GATA6', 'GSTM4', "CPVL", 'DKK1', 'EPB41L3', 'ZNK608', "CRABP1", "SERP2", "OLFM1") 
+
+z.counts.top50 <- z.counts[z.counts$gene %in% top50,]
+z.counts.top50 <- z.counts.top50 %>% arrange(factor(gene, levels = top50))
+rownames(z.counts.top50) <- z.counts.top50$gene
+z.counts.top50$gene <- NULL
+z.counts.top50$ensembl <- NULL
+z.counts.top50$entrez <- NULL
+
+## Heatmap using gene-wise z-transformed gene expression values
+mat_col <- data.frame(sample = rownames(coldata), 
+                      Condition = coldata$condition)
+rownames(mat_col) <- mat_col$sample
+mat_col$sample <- NULL
+
+p <- pheatmap(z.counts.top50, cluster_rows = FALSE,
+         border_color = NA, fontsize = 15, 
+         width = ncol(z.counts.top50)*unit(7, "mm"), height = nrow(z.counts.top50)*unit(7, "mm"),
+         cellwidth = 20, cellheight = 16,
+         annotation_col = mat_col, annotation_colors = mat_colors,
+         main = "Top 50 differentially expressed genes in CC_CR vs. CC")
+```
+
+### PlotCounts of MIR100HG gene
+```{r fig.width=10, fig.height=8, warning=FALSE}
+gene.interest.name = "MIR100HG"
+gene.interest = rownames(resLFC.Salmon.basic[resLFC.Salmon.basic$gene == gene.interest.name,]) 
+
+d <- plotCounts(dds.Salmon.basic.filtered, gene = gene.interest, intgroup = "condition", returnData = TRUE)
+d$name <- rownames(d)
+d$tech_rep <- SampleSheet$tech_rep
+
+ggplot(d, aes(x=condition, y=count, color=tech_rep)) + scale_color_manual(values=color$Replicate) + scale_fill_manual(values=color$Condition) +
+  geom_point(position=position_jitter(w=0.1,h=0)) + geom_boxplot(aes(group = condition, fill= condition),alpha = 0.3) + #geom_text_repel(aes(label = name)) +
+  ggtitle(paste(gene.interest.name, "")) + Theme.YL
+```
+
+```{r echo=F, fig.width=12, fig.height=10}
+pdf(paste0(outdir,"plot_Heatmap_top50_from_literature.pdf"), width=12, height=14)
+print(p)
+dev.off()
+```
+
+# Functional Analysis
+## Gene set enrichment analysis (GSEA)
+[Preranked gene set enrichment analysis (GSEA)](https://bioconductor.org/packages/release/bioc/vignettes/fgsea/inst/doc/fgsea-tutorial.html) is a widely used method for interpretation of gene expression data in terms of biological processes. Utilizing (shrunken) log2 fold changes for all genes, see whether gene sets for particular biological pathways are enriched among the positive or negative fold changes. \
+[MSigDB](https://www.gsea-msigdb.org/gsea/msigdb/human/collections.jsp) \
+[Reactome Pathway Database](https://reactome.org/what-is-reactome) \
+
+### Ranking LFCs
+```{r}
+## Remove NAs 
+gseaDat <- resLFC.Salmon.basic[!is.na(resLFC.Salmon.basic$entrez),] 
+
+## Remove duplicated gene names -- 1) significant? 2) highest baseMean
+length(gseaDat$entrez[duplicated(gseaDat$entrez)])
+
+## 1) significant? 
+gseaDat <- subset(gseaDat, abs(log2FoldChange) > lfc.cutoff & padj < FDR)
+
+## No duplicates
+length(gseaDat$entrez[duplicated(gseaDat$entrez)])
+
+## Rank all genes based on their shrunken fold change 
+geneList <- gseaDat$log2FoldChange
+names(geneList) <- gseaDat$entrez
+
+## Plot the ranked fold changes in descending order
+geneList <- sort(geneList, decreasing = T)
+p <- barplot(geneList, main = "Ranked fold changes of all genes in descending order")
+# pdf(paste0(outdir,"plot_rank_LFC.pdf"), width=10, height=8)
+# plot(p)
+# dev.off()
+```
+
+### MSigDB & clusterProfiler
+```{r}
+## Choose a category from MSigDB
+MSigDB <- msigdbr::msigdbr(species = "Homo sapiens", category = "H")
+MSigDB <- MSigDB %>% as.data.frame %>% dplyr::select(gs_name, entrez_gene)
+
+set.seed(20250319)
+gsea <- clusterProfiler::GSEA(geneList, TERM2GENE = MSigDB,
+                                     minGSSize    = 10,
+                                     maxGSSize    = 500,
+                                     pvalueCutoff = 0.05,
+                                     pAdjustMethod = "BH")
+
+## significant gene set
+gsea@result %>% dplyr::select(ID, NES, qvalue, setSize, rank) %>% dplyr::arrange(qvalue) %>% head()
+
+openxlsx::write.xlsx(gsea@result %>% dplyr::arrange(qvalue), 
+                     file = paste0(outdir, "/gsea.hallmark.xlsx"))
+```
+
+GeneRatio = count / setSize. 'count' is the number of genes that belong to a given gene-set, while 'setSize' is the total number of genes in the gene-set.
+```{r}
+enrichplot::dotplot(gsea, showCategory = 10) + 
+  ggplot2::scale_fill_gradient(low = "#132B43",  high = "#56B1F7", limits = c(0, 1), name = "qvalue") 
+```
+
+```{r fig.width=10, fig.height=6}
+enrichplot::gseaplot(gsea, geneSetID = 1, title = gsea$Description[1])
+enrichplot::gseaplot(gsea, geneSetID = 1, title = gsea$Description[2])
+```
+
+### reactomePathways
+```{r fig.width=12, warning=FALSE, message=FALSE}
+## Pathway analysis
+pathways <- fgsea::reactomePathways(names(geneList))  
+fgseaRes <- fgsea::fgsea(pathways, geneList, maxSize = 500)
+
+## Top 10 pathways
+head(fgseaRes[order(padj, -abs(NES)), ], n=10)[,c(1,3,5)]
+```
+
+```{r fig.width=12, warning=FALSE, message=FALSE}
+## Enrichment plot of the first pathway
+pathway.interest = head(fgseaRes[order(padj, -abs(NES)), ], n=10)$pathway[1]
+p <- fgsea::plotEnrichment(pathways[[pathway.interest]], geneList) + ggplot2::labs(title=pathway.interest) + Theme.YL
+
+# pdf(paste0(outdir,"plot_pathway_", gsub('\\s|\\/', '_', pathway.interest), ".pdf"), width=10, height=8)
+plot(p)
+# dev.off()
+```
+
+## GO enrichment analysis 
+Gene Ontology (GO) analysis is used to highlight biological processes. 
+From the GOseq paper : "One simple, but extremely widely used, systems biology technique for highlighting biological processes is gene category over-representation analysis. In order to perform this analysis, genes are grouped into categories by some common biological property and then tested to find categories that are over represented amongst the differentially expressed genes. Gene Ontology (GO) categories are commonly used in this technique and there are many tools available for performing GO analysis. ... In order to correct for selection bias in category testing, we propose the following three-step methodology. First, the genes that are significantly DE between conditions are identified. The GOseq method works with any procedure for identifying DE genes. Second, the likelihood of DE as a function of transcript length is quantified. This is obtained by fitting a monotonic function to DE versus transcript length data. Finally, the DE versus length function is incorporated into the statistical test of each category's significance. This final step takes into account the lengths of the genes that make up each category."
+
+```{r message=FALSE, warning=FALSE}
+## Create a list of differentially expressed genes (1=DE, 0=Not DE)
+genes <- as.integer(threshold)
+names(genes) <- resLFC.Salmon.basic$ensembl
+table(genes)
+
+## Fit the Probability Weighting Function (PWF)
+gene_lengths <- SummarizedExperiment::assays(dds.Salmon.basic.filtered)[["avgTxLength"]]
+gene_lengths$median <- apply(gene_lengths, 1, median)  
+pwf <- goseq::nullp(genes, "hg38", "ensGene", bias.data = gene_lengths$median)
+
+## Conduct GO enrichment analysis
+goResults <- goseq::goseq(pwf, "hg38", "ensGene", test.cats=c("GO:BP"))
+```
+
+
+```{r message=FALSE, fig.width= 10}
+## Plot the top 10
+GO_top10 <- goResults %>%
+            top_n(10, wt=-over_represented_pvalue) %>%
+            mutate(hitsPerc=numDEInCat*100/numInCat) %>%
+            ggplot(aes(x=hitsPerc,
+                      y=term,
+                      colour=over_represented_pvalue,
+                      size=numDEInCat)) +
+            geom_point() +
+            expand_limits(x=0) +
+            labs(x="Hits (%)", y="GO term", colour="p value", size="Count", title = "GO enrichment (Top 10)") + Theme.YL
+
+# pdf(paste0(outdir,"plot_GO_top10.pdf"), width=12, height=10)
+plot(GO_top10)
+# dev.off()
+```
+
+# Further Analysis 
+**Qiagen Ingenuity Pathway Analysis (IPA) :**  \
+Should you wish to perform the IPA analysis, contact the admin of the software to create your account. You will get an email with activation instruction upon approval. IPA appropriately formatted file can be found at : [working_directory]/[project_title]/[run_name]/DEAoutput/DEA_all_genes_IPA.txt   \
+Please watch the following videos before using the software.   \
+    * Data Formatting in IPA : https://tv.qiagenbioinformatics.com/video/50301639/data-formatting-in-ipa  \
+    * Data Upload in IPA : https://tv.qiagenbioinformatics.com/video/50301463/data-upload-in-ipa  \
+    * Run Core Analysis & Interpret Results : https://tv.qiagenbioinformatics.com/video/64233123/making-your-rnaseq-microarray  \
+
+**Fusion gene analysis using Arriba :**  \
+Fusion genes can be detected by utilizing intermediate files of STAR run as input files for Arriba. Upon completion of the CBBI RNA-seq pipeline, the files can be found at [working_directory]/[project_title]/[run_name]/result/star_salmon/[sample_name].Aligned.out.bam  When you [install Arriba using Bioconda](https://arriba.readthedocs.io/en/latest/quickstart/#installation-using-bioconda), Blacklist, Known fusions, and Protein domains of GRCh38 (and others) are included in your conda environment. The files can be found at [path/to/your/conda/environment]/var/lib/arriba/blacklist_hg38_GRCh38_v2.4.0.tsv.gz   \
+
+# Literature
+**Literature :**  \
+    * STAR for read alignment of RNA-seq data:  \
+    Alexander Dobin and others, STAR: ultrafast universal RNA-seq aligner, Bioinformatics, Volume 29, Issue 1, January 2013, Pages 15–21, https://doi.org/10.1093/bioinformatics/bts635  \
+    https://github.com/alexdobin/STAR/blob/master/doc/STARmanual.pdf  \
+    * Salmon for transcript quantification from RNA-seq data:  \
+    Patro, R., Duggal, G., Love, M. et al. Salmon provides fast and bias-aware quantification of transcript expression. Nat Methods 14, 417–419 (2017). https://doi.org/10.1038/nmeth.4197  \
+    https://combine-lab.github.io/salmon/  \
+    * DESeq2 for differential expression analysis based on the negative binomial distribution:  \
+    Love, M.I., Huber, W. & Anders, S. Moderated estimation of fold change and dispersion for RNA-seq data with DESeq2. Genome Biol 15, 550 (2014). https://doi.org/10.1186/s13059-014-0550-8   \
+    http://bioconductor.org/packages/release/bioc/vignettes/DESeq2/inst/doc/DESeq2.html#standard-workflow   \
+    * DESeq2 shrinkage method 'ashr':  \
+    Matthew Stephens, False discovery rates: a new deal, Biostatistics, Volume 18, Issue 2, April 2017, Pages 275–294, https://doi.org/10.1093/biostatistics/kxw041  \
+    * DESeq2 shrinkage method 'apeglm':  \
+    Anqi Zhu, Joseph G Ibrahim, Michael I Love, Heavy-tailed prior distributions for sequence count data: removing the noise and preserving large differences, Bioinformatics, Volume 35, Issue 12, June 2019, Pages 2084–2092, https://doi.org/10.1093/bioinformatics/bty895   \
+    * GO enrichment analysis :   \
+    Young, M.D., Wakefield, M.J., Smyth, G.K. et al. Gene ontology analysis for RNA-seq: accounting for selection bias. Genome Biol 11, R14 (2010). https://doi.org/10.1186/gb-2010-11-2-r14  \
+    * Pathway analysis :   \
+    Fast gene set enrichment analysis, Gennady Korotkevich, Vladimir Sukhov, Nikolay Budin, Boris Shpak, Maxim N. Artyomov, Alexey Sergushichev. doi: https://doi.org/10.1101/060012   \
+    * Pathway database :   \
+    Marc Gillespie and others, The reactome pathway knowledgebase 2022, Nucleic Acids Research, Volume 50, Issue D1, 7 January 2022, Pages D687–D692, https://doi.org/10.1093/nar/gkab1028   \
+    * Example mRNA-seq data :   \
+    Lu, Y., Zhao, X., Liu, Q. et al. lncRNA MIR100HG-derived miR-100 and miR-125b mediate cetuximab resistance via Wnt/β-catenin signaling. Nat Med 23, 1331–1341 (2017). https://doi.org/10.1038/nm.4424   \
+    https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE82236   \
+    * Qiagen Ingenuity Pathway Analysis (IPA) :    \
+    Bioinformatics, Volume 30, Issue 4, February 2014, Pages 523–530, https://doi.org/10.1093/bioinformatics/btt703   \
+    * Arriba for fusion gene analysis :    \
+    Uhrig S, Ellermann J, Walther T, et al. Accurate and efficient detection of gene fusions from RNA sequencing data. Genome Res. 2021;31(3):448-460. doi:10.1101/gr.257246.119 \
+
+
+# Session info 
+```{r}
+sessionInfo()
+```
