@@ -37,7 +37,7 @@ We found truncated BAM files even with a successful completion message from the 
 - Please remove scratch/ and work/ directories from the server.
 
 *Set up for DEA (Differential Expression Analysis)*  
-The R Markdown document (.RMD) file reads in the output files of the nf-core RNA-seq workflow and detects differentially expressed genes using DESeq2 package. It is assumed that this file is in the same [working_directory]. Any figures and gene lists from the analysis would be saved under [working_directory]/[project_title]/[run_name]/DEAoutput. 
+[The R Markdown document (.RMD) file](https://html-preview.github.io/?url=https://github.com/ylm290/bulkRNAseq/blob/main/bulkRNA-seq_manual.html) reads in the output files of the nf-core RNA-seq workflow and detects differentially expressed genes using DESeq2 package. It is assumed that this file is in the same [working_directory]. Any figures and gene lists from the analysis would be saved under [working_directory]/[project_title]/[run_name]/DEAoutput. 
 
 *File tree*  
 ```{bash}
